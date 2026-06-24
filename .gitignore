@@ -1,26 +1,21 @@
-# 数据集 — 不推送
+# Dataset files (not pushed)
 dataset/
 dataset_yolo/
 
-# Python 缓存
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
-
-# 旧分类代码残留
-models/
-utils/
-checkpoints/
 
 # IDE
 .vscode/
 .idea/
 
-# 系统文件
+# System
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# 临时文件
+# Temp files
 *.log
 *.tmp

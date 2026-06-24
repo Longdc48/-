@@ -1,109 +1,122 @@
-# 口罩检测系统 — Mask Detection with YOLOv8
+# Mask Detection System — YOLOv8 Object Detection
 
-基于 YOLOv8 (Ultralytics) 的口罩目标检测系统。
+> 基于 YOLOv8 的口罩佩戴目标检测系统课程设计
 
-**任务**: 检测图片中的人是否佩戴口罩，并给出边界框位置。
+## Overview
 
-**类别**: `without_mask` (没戴口罩) / `with_mask` (戴口罩)
+本系统使用 YOLOv8n 深度学习模型，实现图片中人脸的口罩佩戴状态检测。支持两类目标：
 
-## 项目结构
+| Class | Label | Description |
+|:-----:|-------|-------------|
+| 0 | `without_mask` | 未佩戴口罩 |
+| 1 | `with_mask` | 佩戴口罩 |
+
+## Project Structure
 
 ```text
-├── dataset/                       # 原始数据集
-│   ├── all_mask/                  # 9,240 张 (YOLO 标注格式)
-│   └── new_mask_data/             # 577 张 (YOLO 标注格式)
-├── dataset_yolo/                  # [自动生成] YOLO 格式数据集
-│   ├── images/{train,val,test}/
-│   ├── labels/{train,val,test}/
-│   └── data.yaml
-├── scripts/
-│   ├── prepare_data.py            # 数据预处理 & 划分
-│   ├── train_yolo.py              # YOLOv8 训练
-│   └── evaluate_yolo.py           # 评估 & 可视化
-├── runs/                          # [自动生成] 训练输出
-├── results/                       # 评估结果
-├── requirements.txt
-├── ENVIRONMENT.md                 # 环境说明
+├── scripts/                              # 核心脚本
+│   ├── prepare_data.py                   # 数据预处理 & YOLO 格式划分
+│   ├── train_yolo.py                     # YOLOv8 训练入口
+│   ├── evaluate_yolo.py                  # 评估 & 可视化
+│   └── report_analysis.py                # 报告补充分析
+├── results/                              # 实验结果与图表
+│   ├── report_summary.md                 # 课程报告（含 Mermaid 架构图）
+│   ├── report_dataset_statistics.png     # 数据集统计分析
+│   ├── report_per_class_metrics.png      # 各类别性能对比
+│   ├── report_confidence_distribution.png # 置信度分布分析
+│   ├── report_training_summary.png       # 训练全貌 6 合 1
+│   ├── mask_detect_yolov8n_confusion_matrix*.png  # 混淆矩阵
+│   ├── mask_detect_yolov8n_BoxPR_curve.png       # PR 曲线
+│   ├── mask_detect_yolov8n_BoxF1_curve.png       # F1 曲线
+│   ├── mask_detect_yolov8n_training_curves.png   # 损失曲线
+│   └── mask_detect_yolov8n_detection_samples/    # 检测结果样本
+├── runs/detect/.../mask_detect_yolov8n/  # 训练产物
+│   ├── weights/best.pt                   # 最佳模型权重
+│   ├── results.csv                       # 完整训练日志
+│   ├── results.png                       # 训练结果总览
+│   ├── train_batch0.jpg                  # 训练 batch 样本
+│   └── val_batch0_pred.jpg               # 验证集预测对比
+├── requirements.txt                      # Python 依赖
+├── ENVIRONMENT.md                        # 硬件 & 环境说明
 └── README.md
 ```
 
-## 快速开始
+## Quick Start
 
-### 1. 环境准备
+### 1. Environment
 
 ```bash
 conda activate torch_env
 pip install -r requirements.txt
 ```
 
-### 2. 数据预处理
+### 2. Prepare Data
 
 ```bash
+# 自动合并 all_mask + new_mask_data，按 70/20/10 划分 train/val/test
 python scripts/prepare_data.py
 ```
 
-### 3. 训练
+### 3. Train
 
 ```bash
-# YOLOv8 Nano (推荐入门)
-python scripts/train_yolo.py --model yolov8n.pt --epochs 100
+# YOLOv8n (baseline)
+python scripts/train_yolo.py --model yolov8n.pt --epochs 100 --batch 16
 
-# YOLOv8 Small (更高精度)
-python scripts/train_yolo.py --model yolov8s.pt --epochs 100 --batch 32
-
-# 多模型对比
-python scripts/train_yolo.py --model yolov8n.pt yolov8s.pt --epochs 100
+# YOLOv8s (higher accuracy)
+python scripts/train_yolo.py --model yolov8s.pt --epochs 100 --batch 8
 ```
 
-### 4. 评估
+### 4. Evaluate
 
 ```bash
-python scripts/evaluate_yolo.py --weights runs/detect/mask_detect_yolov8n/weights/best.pt
-
-# 多模型对比
-python scripts/evaluate_yolo.py --weights \
-    runs/detect/mask_detect_yolov8n/weights/best.pt \
-    runs/detect/mask_detect_yolov8s/weights/best.pt \
-    --compare
+python scripts/evaluate_yolo.py --weights runs/detect/.../best.pt
 ```
 
-### 5. 单张图片推理
+### 5. Generate Report Figures
 
-```python
-from ultralytics import YOLO
-model = YOLO("runs/detect/mask_detect_yolov8n/weights/best.pt")
-results = model("test.jpg")
-results[0].show()  # 显示检测结果
+```bash
+python scripts/report_analysis.py
 ```
 
-## 评估指标
+## Model Performance
 
-训练和评估自动生成：
+### Test Set Results
 
-- ✅ **mAP@50 / mAP@50-95** — 目标检测核心指标
-- ✅ **Precision / Recall** — 精确率与召回率
-- ✅ **混淆矩阵** — 各类别分类情况
-- ✅ **F1-Score 曲线** — 置信度阈值与 F1 关系
-- ✅ **PR 曲线** — Precision-Recall 曲线
-- ✅ **训练损失曲线** — Box / Class / DFL Loss
-- ✅ **检测结果可视化** — 测试集样本标注框
+| Class | AP@50 | Precision | Recall |
+|-------|:-----:|:---------:|:------:|
+| without_mask | 0.718 | 0.786 | 0.752 |
+| with_mask | 0.797 | 0.849 | 0.827 |
+| **Overall** | **0.758** | **0.818** | **0.790** |
 
-## 数据集统计
+### Training Summary
 
-| 指标 | 数值 |
-|------|:----:|
-| 总有效样本 | 9,692 |
-| 训练集 | 6,784 (70%) |
-| 验证集 | 1,938 (20%) |
-| 测试集 | 970 (10%) |
-| class 0 (没戴口罩) 标注框 | 14,973 |
-| class 1 (戴口罩) 标注框 | 7,291 |
+| Metric | Best Value | Epoch |
+|--------|:----------:|:-----:|
+| mAP@50 (val) | 0.803 | 72 |
+| mAP@50-95 (val) | 0.511 | 68 |
+| Total Epochs | 83 (early stop) | — |
 
-## 环境要求
+## Dataset
 
-- Python 3.10+
-- PyTorch 2.6+ (CUDA)
-- CUDA 12.4+
-- NVIDIA GPU (RTX 4060 8GB)
+| Split | Images | Ratio |
+|-------|:------:|:-----:|
+| Train | 6,784 | 70% |
+| Val | 1,938 | 20% |
+| Test | 970 | 10% |
+| **Total** | **9,692** | — |
 
-详见 [ENVIRONMENT.md](ENVIRONMENT.md)。
+Source: `all_mask/` (9,240) + `new_mask_data/` (577), after filtering empty annotations.
+
+## Technical Details
+
+- **Framework**: PyTorch 2.6 + Ultralytics YOLOv8
+- **Model**: YOLOv8n (3,006,038 params, 8.1 GFLOPs)
+- **GPU**: NVIDIA GeForce RTX 4060 Laptop (8 GB)
+- **CUDA**: 12.4
+- **Optimizer**: AdamW (lr=1e-3) + CosineAnnealingLR
+- **Augmentation**: Mosaic, MixUp, HSV, Flip, Scale, Translate, Rotate
+
+## Report
+
+See [results/report_summary.md](results/report_summary.md) for the complete course design report with system architecture diagrams, experimental data, and analysis.
