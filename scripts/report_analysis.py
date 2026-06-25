@@ -157,7 +157,7 @@ def plot_per_class_metrics():
 
 def plot_confidence_distribution():
     """Figure 3: Confidence score distribution"""
-    model = YOLO("runs/detect/runs/detect/mask_detect_yolov8n/weights/best.pt")
+    model = YOLO("runs/mask_detect_yolov8n/weights/best.pt")
     test_dir = Path("dataset_yolo/images/test")
     test_imgs = sorted(test_dir.glob("*.jpg"))
     random.seed(42)
@@ -257,7 +257,7 @@ def _compute_iou(pred_xywh, gx, gy, gw, gh):
 
 def plot_training_summary():
     """Figure 4: Full training curves"""
-    df = pd.read_csv("runs/detect/runs/detect/mask_detect_yolov8n/results.csv")
+    df = pd.read_csv("runs/mask_detect_yolov8n/results.csv")
     df.columns = df.columns.str.strip()
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
@@ -309,7 +309,7 @@ def plot_training_summary():
 
 def generate_report_markdown():
     """Generate report data markdown (in Chinese for the course report)"""
-    df = pd.read_csv("runs/detect/runs/detect/mask_detect_yolov8n/results.csv")
+    df = pd.read_csv("runs/mask_detect_yolov8n/results.csv")
     df.columns = df.columns.str.strip()
 
     best_m50 = df["metrics/mAP50(B)"].max()

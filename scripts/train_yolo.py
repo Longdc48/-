@@ -51,7 +51,7 @@ def parse_args():
                         help="早停耐心值")
     parser.add_argument("--device", type=str, default="0",
                         help="设备 (0=GPU 0, cpu=CPU)")
-    parser.add_argument("--project", type=str, default="runs/detect",
+    parser.add_argument("--project", type=str, default="runs",
                         help="训练输出目录")
     parser.add_argument("--resume", action="store_true",
                         help="从上次中断处恢复")
