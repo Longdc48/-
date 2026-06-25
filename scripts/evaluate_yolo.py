@@ -4,10 +4,10 @@ YOLOv8 口罩检测评估脚本
 
 用法:
     # 评估单个模型
-    python scripts/evaluate_yolo.py --weights runs/detect/mask_detect_yolov8n/weights/best.pt
+    python scripts/evaluate_yolo.py --weights runs/mask_detect_yolov8n/weights/best.pt
 
     # 对比多个模型
-    python scripts/evaluate_yolo.py --weights runs/detect/mask_detect_yolov8n/weights/best.pt runs/detect/mask_detect_yolov8s/weights/best.pt --compare
+    python scripts/evaluate_yolo.py --weights runs/mask_detect_yolov8n/weights/best.pt runs/mask_detect_yolov8s/weights/best.pt --compare
 """
 
 import os

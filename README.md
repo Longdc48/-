@@ -30,7 +30,7 @@
 │   ├── mask_detect_yolov8n_BoxF1_curve.png       # F1 曲线
 │   ├── mask_detect_yolov8n_training_curves.png   # 损失曲线
 │   └── mask_detect_yolov8n_detection_samples/    # 检测结果样本
-├── runs/detect/.../mask_detect_yolov8n/  # 训练产物
+├── runs/mask_detect_yolov8n/              # 训练产物
 │   ├── weights/best.pt                   # 最佳模型权重
 │   ├── results.csv                       # 完整训练日志
 │   ├── results.png                       # 训练结果总览
@@ -70,7 +70,7 @@ python scripts/train_yolo.py --model yolov8s.pt --epochs 100 --batch 8
 ### 4. Evaluate
 
 ```bash
-python scripts/evaluate_yolo.py --weights runs/detect/.../best.pt
+python scripts/evaluate_yolo.py --weights runs/mask_detect_yolov8n/weights/best.pt
 ```
 
 ### 5. Generate Report Figures

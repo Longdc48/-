@@ -12,7 +12,7 @@ save_period: -1
 cache: false
 device: '0'
 workers: 8
-project: runs/detect
+project: runs
 name: mask_detect_yolov8n
 exist_ok: true
 pretrained: true
@@ -107,4 +107,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: botsort.yaml
-save_dir: C:\Users\Long\Desktop\-\runs\detect\runs\detect\mask_detect_yolov8n
+save_dir: C:\Users\Long\Desktop\-\runs\mask_detect_yolov8n
