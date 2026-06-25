@@ -6,9 +6,13 @@ Supplementary report analysis — generate additional figures for course report:
   3. Confidence distribution (TP vs FP)
   4. Full training summary curves
   5. Report data markdown
+
+Usage:
+    python scripts/report_analysis.py
+    python scripts/report_analysis.py --weights runs/mask_detect_yolov8n/weights/best.pt
 """
 
-import os, sys, random
+import os, sys, random, argparse
 from pathlib import Path
 
 import numpy as np
@@ -21,7 +25,6 @@ import yaml
 from collections import Counter
 from tqdm import tqdm
 
-import torch
 from ultralytics import YOLO
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -29,21 +32,47 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 plt.rcParams["figure.dpi"] = 150
 sns.set_style("whitegrid")
 
-CLASS_NAMES = ["without_mask", "with_mask"]
 CLASS_LABELS = ["No Mask", "With Mask"]
 COLORS = ["#E74C3C", "#2ECC71", "#3498DB", "#F39C12"]
 
 
-def plot_dataset_statistics():
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate supplementary report figures")
+    parser.add_argument("--data", type=str, default="dataset_yolo/data.yaml",
+                        help="Path to data.yaml")
+    parser.add_argument("--weights", type=str,
+                        default="runs/mask_detect_yolov8n/weights/best.pt",
+                        help="Path to trained model weights")
+    parser.add_argument("--results_csv", type=str,
+                        default="runs/mask_detect_yolov8n/results.csv",
+                        help="Path to training results CSV")
+    parser.add_argument("--output_dir", type=str, default="results",
+                        help="Output directory for figures")
+    parser.add_argument("--ap_no_mask", type=float, default=0.718,
+                        help="Test set AP@50 for No Mask class")
+    parser.add_argument("--p_no_mask", type=float, default=0.786,
+                        help="Test set Precision for No Mask class")
+    parser.add_argument("--r_no_mask", type=float, default=0.752,
+                        help="Test set Recall for No Mask class")
+    parser.add_argument("--ap_with_mask", type=float, default=0.797,
+                        help="Test set AP@50 for With Mask class")
+    parser.add_argument("--p_with_mask", type=float, default=0.849,
+                        help="Test set Precision for With Mask class")
+    parser.add_argument("--r_with_mask", type=float, default=0.827,
+                        help="Test set Recall for With Mask class")
+    return parser.parse_args()
+
+
+def plot_dataset_statistics(data_yaml, output_dir):
     """Figure 1: Dataset statistics"""
-    with open("dataset_yolo/data.yaml", encoding="utf-8") as f:
+    with open(data_yaml, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
     # (a) Box count per class
     box_counts = Counter()
-    all_labels = Path("dataset_yolo/labels")
+    all_labels = Path(config["path"]) / "labels"
     for split in ["train", "val", "test"]:
         lbl_dir = all_labels / split
         if lbl_dir.exists():
@@ -111,17 +140,18 @@ def plot_dataset_statistics():
 
     plt.suptitle("Dataset Statistics — Mask Detection", fontsize=16, fontweight="bold", y=1.02)
     plt.tight_layout()
-    path = "results/report_dataset_statistics.png"
+    path = os.path.join(output_dir, "report_dataset_statistics.png")
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
     print(f"  [OK] {path}")
+    return {"box_counts": box_counts, "split_counts": split_counts, "total_boxes": sum(box_counts.values())}
 
 
-def plot_per_class_metrics():
+def plot_per_class_metrics(args, output_dir):
     """Figure 2: Per-class performance"""
     metrics = {
-        "No Mask":      {"AP@50": 0.718, "Precision": 0.786, "Recall": 0.752},
-        "With Mask":    {"AP@50": 0.797, "Precision": 0.849, "Recall": 0.827},
+        "No Mask":   {"AP@50": args.ap_no_mask,   "Precision": args.p_no_mask,   "Recall": args.r_no_mask},
+        "With Mask": {"AP@50": args.ap_with_mask, "Precision": args.p_with_mask, "Recall": args.r_with_mask},
     }
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -149,23 +179,26 @@ def plot_per_class_metrics():
     ax.set_ylim(0, 1.0); ax.legend(fontsize=10); ax.grid(True, alpha=0.3, axis="y")
 
     plt.tight_layout()
-    path = "results/report_per_class_metrics.png"
+    path = os.path.join(output_dir, "report_per_class_metrics.png")
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
     print(f"  [OK] {path}")
+    return metrics
 
 
-def plot_confidence_distribution():
+def plot_confidence_distribution(weights_path, data_yaml, output_dir):
     """Figure 3: Confidence score distribution"""
-    model = YOLO("runs/mask_detect_yolov8n/weights/best.pt")
-    test_dir = Path("dataset_yolo/images/test")
+    model = YOLO(weights_path)
+
+    with open(data_yaml, encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    test_dir = Path(config["path"]) / "images" / "test"
+    lbl_test_dir = Path(config["path"]) / "labels" / "test"
     test_imgs = sorted(test_dir.glob("*.jpg"))
     random.seed(42)
     samples = random.sample(test_imgs, min(500, len(test_imgs)))
 
     all_confidences = []
-    lbl_test_dir = Path("dataset_yolo/labels/test")
-
     for img_path in tqdm(samples, desc="Analyzing confidence"):
         results = model(str(img_path), conf=0.001, verbose=False)
         boxes = results[0].boxes
@@ -232,7 +265,7 @@ def plot_confidence_distribution():
 
     plt.suptitle("Model Prediction Confidence Analysis", fontsize=14, fontweight="bold")
     plt.tight_layout()
-    path = "results/report_confidence_distribution.png"
+    path = os.path.join(output_dir, "report_confidence_distribution.png")
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
     print(f"  [OK] {path}")
@@ -255,10 +288,12 @@ def _compute_iou(pred_xywh, gx, gy, gw, gh):
     return inter / union if union > 0 else 0
 
 
-def plot_training_summary():
+def plot_training_summary(results_csv, output_dir):
     """Figure 4: Full training curves"""
-    df = pd.read_csv("runs/mask_detect_yolov8n/results.csv")
+    df = pd.read_csv(results_csv)
     df.columns = df.columns.str.strip()
+
+    total_epochs = len(df)
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
 
@@ -298,25 +333,29 @@ def plot_training_summary():
     ax.set_title("Learning Rate (Cosine Decay)"); ax.set_xlabel("Epoch"); ax.grid(True, alpha=0.3)
 
     best_m50 = df["metrics/mAP50(B)"].max()
-    plt.suptitle(f"YOLOv8n Training Summary (83 Epochs, Best mAP@50 = {best_m50:.4f})",
+    plt.suptitle(f"YOLOv8n Training Summary ({total_epochs} Epochs, Best mAP@50 = {best_m50:.4f})",
                  fontsize=14, fontweight="bold")
     plt.tight_layout()
-    path = "results/report_training_summary.png"
+    path = os.path.join(output_dir, "report_training_summary.png")
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
     print(f"  [OK] {path}")
+    return df
 
 
-def generate_report_markdown():
-    """Generate report data markdown (in Chinese for the course report)"""
-    df = pd.read_csv("runs/mask_detect_yolov8n/results.csv")
-    df.columns = df.columns.str.strip()
-
+def generate_report_markdown(args, df, dataset_info, per_class_metrics):
+    """Generate report data markdown"""
     best_m50 = df["metrics/mAP50(B)"].max()
     best_m50_ep = int(df.iloc[df["metrics/mAP50(B)"].idxmax()]["epoch"])
     best_m5095 = df["metrics/mAP50-95(B)"].max()
+    best_m5095_ep = int(df.iloc[df["metrics/mAP50-95(B)"].idxmax()]["epoch"])
     best_p = df["metrics/precision(B)"].max()
     best_r = df["metrics/recall(B)"].max()
+    total_epochs = len(df)
+
+    sc = dataset_info["split_counts"]
+    total_img = sc["train"] + sc["val"] + sc["test"]
+    bc = dataset_info["box_counts"]
 
     report = f"""# Mask Detection — Experiment Report Data
 
@@ -328,12 +367,12 @@ def generate_report_markdown():
 - Framework: Ultralytics YOLOv8
 
 ## Dataset
-- Total samples: 9,692 images
-- Train: 6,784 (70%)
-- Val: 1,938 (20%)
-- Test: 970 (10%)
+- Total samples: {total_img:,} images
+- Train: {sc["train"]:,} ({sc["train"]/total_img*100:.0f}%)
+- Val: {sc["val"]:,} ({sc["val"]/total_img*100:.0f}%)
+- Test: {sc["test"]:,} ({sc["test"]/total_img*100:.0f}%)
 - Classes: without_mask / with_mask
-- Total bounding boxes: 22,264 (without_mask: 14,973, with_mask: 7,291)
+- Total bounding boxes: {dataset_info["total_boxes"]:,} (without_mask: {bc.get(0,0):,}, with_mask: {bc.get(1,0):,})
 
 ## Model Configuration
 - Model: YOLOv8n (3,006,038 params, 8.1 GFLOPs)
@@ -342,7 +381,7 @@ def generate_report_markdown():
 - Loss: Box Loss + Cls Loss + DFL Loss
 - Batch Size: 16
 - Image Size: 640x640
-- Epochs: 100 (Early Stopping patience=15, stopped at epoch 83)
+- Epochs: 100 (Early Stopping patience=15, stopped at epoch {total_epochs})
 - Augmentation: Mosaic, MixUp, HSV, Flip, Scale, Translate, Rotate
 
 ## Results
@@ -351,51 +390,69 @@ def generate_report_markdown():
 | Metric | Value | Epoch |
 |--------|:-----:|:-----:|
 | mAP@50 | {best_m50:.4f} | {best_m50_ep} |
-| mAP@50-95 | {best_m5095:.4f} | {int(df["metrics/mAP50-95(B)"].idxmax())} |
+| mAP@50-95 | {best_m5095:.4f} | {best_m5095_ep} |
 | Best Precision | {best_p:.4f} | - |
 | Best Recall | {best_r:.4f} | - |
 
 ### Test Set Results
 | Class | AP@50 | Precision | Recall |
 |-------|:-----:|:---------:|:------:|
-| without_mask | 0.7184 | 0.786 | 0.752 |
-| with_mask | 0.7972 | 0.849 | 0.827 |
-| **Overall** | **0.7578** | **0.818** | **0.790** |
+| without_mask | {per_class_metrics['No Mask']['AP@50']:.4f} | {per_class_metrics['No Mask']['Precision']:.3f} | {per_class_metrics['No Mask']['Recall']:.3f} |
+| with_mask | {per_class_metrics['With Mask']['AP@50']:.4f} | {per_class_metrics['With Mask']['Precision']:.3f} | {per_class_metrics['With Mask']['Recall']:.3f} |
+| **Overall** | **{per_class_metrics['No Mask']['AP@50']:.4f}** | **{per_class_metrics['No Mask']['Precision']:.3f}** | **{per_class_metrics['No Mask']['Recall']:.3f}** |
 
 ### Analysis
-1. "with_mask" class achieves higher AP@50 (0.797) than "without_mask" (0.718)
+1. "with_mask" class achieves higher AP@50 ({per_class_metrics['With Mask']['AP@50']:.3f}) than "without_mask" ({per_class_metrics['No Mask']['AP@50']:.3f})
 2. Masked faces have more distinctive visual features for localization
 3. "without_mask" class has more background confusion and face variation
 4. Both classes have high precision (>0.78), indicating low false positive rate
-5. mAP@50-95=0.487 suggests room for improvement at stricter IoU thresholds
+5. mAP@50-95={best_m5095:.3f} suggests room for improvement at stricter IoU thresholds
 """
-    path = "results/report_summary.md"
+    path = os.path.join(args.output_dir, "report_summary.md")
     Path(path).write_text(report, encoding="utf-8")
     print(f"  [OK] {path}")
 
 
 def main():
+    args = parse_args()
+
     print("\n" + "=" * 60)
     print("  Supplementary Report Analysis")
     print("=" * 60 + "\n")
 
-    print("[1/5] Dataset statistics...")
-    plot_dataset_statistics()
+    steps = [
+        ("Dataset statistics", lambda: plot_dataset_statistics(args.data, args.output_dir)),
+        ("Per-class metrics", lambda: plot_per_class_metrics(args, args.output_dir)),
+        ("Confidence distribution", lambda: plot_confidence_distribution(args.weights, args.data, args.output_dir)),
+        ("Training summary curves", lambda: plot_training_summary(args.results_csv, args.output_dir)),
+    ]
 
-    print("[2/5] Per-class metrics...")
-    plot_per_class_metrics()
+    results = {}
+    for step_name, step_fn in steps:
+        try:
+            print(f"[{len(results)+1}/{len(steps)+1}] {step_name}...")
+            results[step_name] = step_fn()
+        except Exception as e:
+            print(f"  [ERROR] {step_name} failed: {e}")
+            results[step_name] = None
 
-    print("[3/5] Confidence distribution...")
-    plot_confidence_distribution()
-
-    print("[4/5] Training summary curves...")
-    plot_training_summary()
-
-    print("[5/5] Report markdown...")
-    generate_report_markdown()
+    # Generate markdown report (depends on step 1 and step 4)
+    print(f"[5/5] Report markdown...")
+    try:
+        dataset_info = results.get("Dataset statistics") or {"split_counts": {"train": 0, "val": 0, "test": 0},
+                                                               "box_counts": {}, "total_boxes": 0}
+        per_class = results.get("Per-class metrics") or {"No Mask": {"AP@50": 0, "Precision": 0, "Recall": 0},
+                                                          "With Mask": {"AP@50": 0, "Precision": 0, "Recall": 0}}
+        df = results.get("Training summary curves")
+        if df is None:
+            df = pd.read_csv(args.results_csv)
+            df.columns = df.columns.str.strip()
+        generate_report_markdown(args, df, dataset_info, per_class)
+    except Exception as e:
+        print(f"  [ERROR] Report markdown failed: {e}")
 
     print(f"\n{'=' * 60}")
-    print(f"  All figures saved to results/")
+    print(f"  All figures saved to {args.output_dir}/")
     print(f"{'=' * 60}\n")
 
 

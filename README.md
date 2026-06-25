@@ -25,7 +25,7 @@
 │   ├── report_per_class_metrics.png      # 各类别性能对比
 │   ├── report_confidence_distribution.png # 置信度分布分析
 │   ├── report_training_summary.png       # 训练全貌 6 合 1
-│   ├── mask_detect_yolov8n_confusion_matrix*.png  # 混淆矩阵
+│   ├── mask_detect_yolov8n_confusion_matrix.png     # 混淆矩阵
 │   ├── mask_detect_yolov8n_BoxPR_curve.png       # PR 曲线
 │   ├── mask_detect_yolov8n_BoxF1_curve.png       # F1 曲线
 │   ├── mask_detect_yolov8n_training_curves.png   # 损失曲线

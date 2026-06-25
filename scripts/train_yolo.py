@@ -41,7 +41,7 @@ def parse_args():
                         help="data.yaml 路径")
     parser.add_argument("--epochs", type=int, default=100,
                         help="训练轮数")
-    parser.add_argument("--batch", type=int, default=32,
+    parser.add_argument("--batch", type=int, default=16,
                         help="批次大小")
     parser.add_argument("--imgsz", type=int, default=640,
                         help="输入图像尺寸")

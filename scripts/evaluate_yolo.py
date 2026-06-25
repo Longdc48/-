@@ -25,8 +25,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
-from tqdm import tqdm
-
 from ultralytics import YOLO
 
 # ── 中文字体 ────────────────────────────────────────────────────
@@ -63,12 +61,6 @@ def parse_args():
     parser.add_argument("--save_samples", type=int, default=20,
                         help="保存检测结果样本数")
     return parser.parse_args()
-
-
-def plot_confusion_matrix(cm_path: str, output_dir: str, model_name: str):
-    """读取 YOLO 生成的混淆矩阵并美化"""
-    # YOLO 会自己生成混淆矩阵，这里做二次美化
-    pass
 
 
 def plot_training_curves(results_dir: str, output_dir: str, model_name: str):
@@ -137,7 +129,7 @@ def plot_training_curves(results_dir: str, output_dir: str, model_name: str):
     print(f"  [OK] 训练曲线: {save_path}")
 
 
-def save_detection_samples(model, data_yaml: str, output_dir: str, model_name: str, n: int = 20):
+def save_detection_samples(model, data_yaml: str, output_dir: str, model_name: str, n: int = 20, conf: float = 0.25):
     """保存测试集检测结果可视化样本"""
     with open(data_yaml, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -156,7 +148,7 @@ def save_detection_samples(model, data_yaml: str, output_dir: str, model_name: s
     sample_dir.mkdir(parents=True, exist_ok=True)
 
     for img_path in samples:
-        results = model(str(img_path), conf=0.25)
+        results = model(str(img_path), conf=conf)
         annotated = results[0].plot(show=False, line_width=2, font_size=10)
         save_path = sample_dir / f"{img_path.stem}_detected.jpg"
         cv2.imwrite(str(save_path), annotated)
@@ -176,7 +168,7 @@ def main():
             continue
 
         # ── 提取模型名称 ────────────────────────────────────────
-        # 路径格式: runs/detect/mask_detect_yolov8n/weights/best.pt
+        # 路径格式: runs/mask_detect_yolov8n/weights/best.pt
         parts = Path(weight_path).parts
         model_name = "model"
         for p in parts:
@@ -238,7 +230,7 @@ def main():
         plot_training_curves(str(results_dir), args.output_dir, model_name)
 
         # ── 保存检测样本 ────────────────────────────────────────
-        save_detection_samples(model, args.data, args.output_dir, model_name, args.save_samples)
+        save_detection_samples(model, args.data, args.output_dir, model_name, args.save_samples, args.conf)
 
         # ── YOLO 自动生成的图表也复制过来 ───────────────────────
         val_dir = Path(args.output_dir) / f"{model_name}_val"

@@ -22,6 +22,7 @@ import random
 import argparse
 from pathlib import Path
 
+from collections import Counter
 import yaml
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -78,6 +79,9 @@ def collect_samples(source_dirs: list[str], skip_empty: bool = True) -> list[dic
 
 def main():
     args = parse_args()
+    if args.train_ratio + args.val_ratio >= 1.0:
+        print(f"  [错误] train_ratio({args.train_ratio}) + val_ratio({args.val_ratio}) 必须小于 1.0")
+        sys.exit(1)
     random.seed(args.seed)
 
     # ── 收集样本 ────────────────────────────────────────────────
@@ -91,7 +95,6 @@ def main():
         print(f"  过滤后样本数 (≥{args.min_boxes} boxes): {len(samples)}")
 
     # ── 统计类别分布 ────────────────────────────────────────────
-    from collections import Counter
     class_counter = Counter()
     box_counter = Counter()
     for s in samples:
