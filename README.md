@@ -1,103 +1,113 @@
-# Mask Detection System — YOLOv8 Object Detection
+# 口罩检测系统 — YOLOv8 目标检测
 
-> 基于 YOLOv8 的口罩佩戴目标检测系统课程设计
+> 基于 YOLOv8 的口罩佩戴目标检测系统 —— 深度学习课程设计
 
-## Overview
+## 项目概述
 
-本系统使用 YOLOv8n 深度学习模型，实现图片中人脸的口罩佩戴状态检测。支持两类目标：
+使用 YOLOv8n 深度学习模型，实现图片中人脸的口罩佩戴状态检测。支持两类目标：
 
-| Class | Label | Description |
-|:-----:|-------|-------------|
-| 0 | `without_mask` | 未佩戴口罩 |
-| 1 | `with_mask` | 佩戴口罩 |
+| Class | Label | 说明 |
+|:-----:|-------|------|
+| 0 | without_mask | 未佩戴口罩 |
+| 1 | with_mask | 佩戴口罩 |
 
-## Project Structure
+## 项目结构
 
 ```text
-├── scripts/                              # 核心脚本
-│   ├── prepare_data.py                   # 数据预处理 & YOLO 格式划分
-│   ├── train_yolo.py                     # YOLOv8 训练入口
-│   ├── evaluate_yolo.py                  # 评估 & 可视化
-│   └── report_analysis.py                # 报告补充分析
-├── results/                              # 实验结果与图表
-│   ├── report_summary.md                 # 课程报告（含 Mermaid 架构图）
-│   ├── report_dataset_statistics.png     # 数据集统计分析
-│   ├── report_per_class_metrics.png      # 各类别性能对比
-│   ├── report_confidence_distribution.png # 置信度分布分析
-│   ├── report_training_summary.png       # 训练全貌 6 合 1
-│   ├── mask_detect_yolov8n_confusion_matrix.png     # 混淆矩阵
-│   ├── mask_detect_yolov8n_BoxPR_curve.png       # PR 曲线
-│   ├── mask_detect_yolov8n_BoxF1_curve.png       # F1 曲线
-│   ├── mask_detect_yolov8n_training_curves.png   # 损失曲线
-│   └── mask_detect_yolov8n_detection_samples/    # 检测结果样本
-├── runs/mask_detect_yolov8n/              # 训练产物
-│   ├── weights/best.pt                   # 最佳模型权重
-│   ├── results.csv                       # 完整训练日志
-│   ├── results.png                       # 训练结果总览
-│   ├── train_batch0.jpg                  # 训练 batch 样本
-│   └── val_batch0_pred.jpg               # 验证集预测对比
-├── requirements.txt                      # Python 依赖
-├── ENVIRONMENT.md                        # 硬件 & 环境说明
+├── scripts/
+│   ├── prepare_data.py          # 数据预处理 & YOLO 格式划分
+│   ├── train_yolo.py            # YOLOv8 训练入口
+│   ├── evaluate_yolo.py         # 评估 & 报告生成（含图表分析）
+│   ├── error_analysis.py        # 错误分析（准确率 + 误分类样本）
+│   └── inference_demo.py        # 批量推理演示
+├── results/                     # 实验结果与图表
+│   ├── report_summary.md        # 课程设计实验报告
+│   ├── misclassified_samples.png # 误分类样本可视化
+│   └── *.png                    # 各类分析图表
+├── runs/mask_detect_yolov8n/    # 训练产物（权重、日志）
+├── requirements.txt
 └── README.md
 ```
 
-## Quick Start
+## 环境配置
 
-### 1. Environment
+| 组件 | 详情 |
+|------|------|
+| OS | Windows 11 Home |
+| GPU | NVIDIA GeForce RTX 4060 Laptop (8 GB) |
+| CUDA | 12.4 |
+| Python | 3.10.20 (conda: torch_env) |
+| PyTorch | 2.6.0+cu124 |
 
 ```bash
 conda activate torch_env
 pip install -r requirements.txt
 ```
 
-### 2. Prepare Data
+验证 GPU 可用：
+```bash
+python -c "import torch; print(torch.cuda.is_available())"  # 应输出 True
+python -c "import torch; print(torch.cuda.get_device_name(0))"  # 应显示 RTX 4060
+```
+
+## 快速开始
+
+### 1. 数据准备
 
 ```bash
-# 自动合并 all_mask + new_mask_data，按 70/20/10 划分 train/val/test
 python scripts/prepare_data.py
 ```
 
-### 3. Train
+自动合并 `dataset/all_mask/` + `dataset/new_mask_data/`，按 70/20/10 划分 train/val/test。
+
+### 2. 训练
 
 ```bash
-# YOLOv8n (baseline)
+# YOLOv8n（推荐）
 python scripts/train_yolo.py --model yolov8n.pt --epochs 100 --batch 16
 
-# YOLOv8s (higher accuracy)
+# 更大模型
 python scripts/train_yolo.py --model yolov8s.pt --epochs 100 --batch 8
 ```
 
-### 4. Evaluate
+### 3. 评估 & 报告
 
 ```bash
-python scripts/evaluate_yolo.py --weights runs/mask_detect_yolov8n/weights/best.pt
+# 完整评估 + 报告图表
+python scripts/evaluate_yolo.py --weights runs/mask_detect_yolov8n/weights/best.pt --report
 ```
 
-### 5. Generate Report Figures
+### 4. 错误分析
 
 ```bash
-python scripts/report_analysis.py
+# 计算准确率 + 生成误分类样本图
+python scripts/error_analysis.py
 ```
 
-## Model Performance
+### 5. 推理演示
 
-### Test Set Results
+```bash
+python scripts/inference_demo.py --dir your_photos/
+```
 
-| Class | AP@50 | Precision | Recall |
-|-------|:-----:|:---------:|:------:|
+## 模型性能
+
+### 测试集结果
+
+| 类别 | AP@50 | Precision | Recall |
+|------|:-----:|:---------:|:------:|
 | without_mask | 0.718 | 0.786 | 0.752 |
 | with_mask | 0.797 | 0.849 | 0.827 |
 | **Overall** | **0.758** | **0.818** | **0.790** |
 
-### Training Summary
+### 训练最佳（验证集）
 
-| Metric | Best Value | Epoch |
-|--------|:----------:|:-----:|
-| mAP@50 (val) | 0.803 | 72 |
-| mAP@50-95 (val) | 0.511 | 68 |
-| Total Epochs | 83 (early stop) | — |
+| Metric | Best | Epoch |
+|--------|:----:|:-----:|
+| mAP@50 | 0.803 | 72 |
+| mAP@50-95 | 0.511 | 68 |
 
-## Dataset
+## 数据集
 
 | Split | Images | Ratio |
 |-------|:------:|:-----:|
@@ -106,17 +116,15 @@ python scripts/report_analysis.py
 | Test | 970 | 10% |
 | **Total** | **9,692** | — |
 
-Source: `all_mask/` (9,240) + `new_mask_data/` (577), after filtering empty annotations.
+## 技术要点
 
-## Technical Details
+- **框架**: PyTorch 2.6 + Ultralytics YOLOv8
+- **模型**: YOLOv8n (3,006,038 参数, 8.1 GFLOPs)
+- **优化器**: AdamW + CosineAnnealingLR
+- **损失**: Box Loss + Cls Loss + DFL Loss
+- **增强**: Mosaic, MixUp, HSV, Flip, Scale, Translate, Rotate
+- **早停**: patience=15 (实际 83/100 epoch 停止)
 
-- **Framework**: PyTorch 2.6 + Ultralytics YOLOv8
-- **Model**: YOLOv8n (3,006,038 params, 8.1 GFLOPs)
-- **GPU**: NVIDIA GeForce RTX 4060 Laptop (8 GB)
-- **CUDA**: 12.4
-- **Optimizer**: AdamW (lr=1e-3) + CosineAnnealingLR
-- **Augmentation**: Mosaic, MixUp, HSV, Flip, Scale, Translate, Rotate
+## 课程报告
 
-## Report
-
-See [results/report_summary.md](results/report_summary.md) for the complete course design report with system architecture diagrams, experimental data, and analysis.
+完整报告见 [results/report_summary.md](results/report_summary.md)，包含系统架构、数据集分析、实验结果、混淆矩阵、准确率/精确率/召回率、损失函数分析、错误分类样本分析等。
